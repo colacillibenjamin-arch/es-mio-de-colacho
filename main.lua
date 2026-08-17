@@ -808,4 +808,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-Notify("Velocity • Activado exitosamente. Tecla [Left Control]", Color_NeonBlue)
+Notify("colachox • Activado exitosamente. Tecla [Left Control]", Color_NeonBlue)
