@@ -10,6 +10,7 @@ local USUARIOS_PERMITIDOS = {
     [7149173878] = true,    -- Comprador 3
     [11004267608] = true,    -- Comprador 4
     [4891619315] = true,            -- Comprador 5
+    [4936278434] = true, --pablito
 }
 -- ====================================================================================
 
@@ -546,7 +547,7 @@ RunService.RenderStepped:Connect(function()
     if bestTarget then Camera.CFrame = CFrame.new(Camera.CFrame.Position, bestTarget) end
 end)
 
--- INTERFAZ PRINCIPAL MINIMALISTA (Velocity)
+-- INTERFAZ PRINCIPAL MINIMALISTA (colacho)
 local ScreenGui = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("CoreGui"))
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 640, 0, 480) 
