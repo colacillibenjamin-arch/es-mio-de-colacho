@@ -49,20 +49,20 @@ local originalDisplayName = LocalPlayer.DisplayName
 
 -- Settings
 local Settings = {
-    Aimbot = true,
+    Aimbot = false,
     AimLock = true,                    -- Control de activación en menú
     AimLockSpeed = "Medio",            -- "Suave", "Medio", "Fuerte"
     AimLockKey = Enum.KeyCode.F,       -- Tecla de Aimlock
     AimLockFOV = 5000,                 -- FOV para Aimlock
     AimKey = Enum.UserInputType.MouseButton2,
     NoRecoil = true,
-    NameOne = false, 
+    NameOne = true, 
     FOV = 150,                         -- FOV inicial del Aimbot
     AimPart = "Head",
     ESP = true,           
     NameESP = true,       
     WeaponESP = true,     
-    HPBar = false,
+    HPBar = true,
     FOVVisible = true,
     DefaultFOV = Camera.FieldOfView,
     Whitelist = {} 
