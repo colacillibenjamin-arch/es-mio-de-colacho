@@ -49,20 +49,20 @@ local originalDisplayName = LocalPlayer.DisplayName
 
 -- Settings
 local Settings = {
-    Aimbot = false,
+    Aimbot = true,
     AimLock = true,                    -- Control de activación en menú
     AimLockSpeed = "Medio",            -- "Suave", "Medio", "Fuerte"
     AimLockKey = Enum.KeyCode.F,       -- Tecla de Aimlock
     AimLockFOV = 5000,                 -- FOV para Aimlock
     AimKey = Enum.UserInputType.MouseButton2,
     NoRecoil = true,
-    NameOne = true, 
+    NameOne = false, 
     FOV = 150,                         -- FOV inicial del Aimbot
     AimPart = "Head",
     ESP = true,           
     NameESP = true,       
     WeaponESP = true,     
-    HPBar = true,
+    HPBar = false,
     FOVVisible = true,
     DefaultFOV = Camera.FieldOfView,
     Whitelist = {} 
@@ -630,7 +630,10 @@ AimPartBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Generador de Toggles
-local function AddToggle(name, key, order)
+local function AddToggle(name, keys, order)
+    -- keys puede ser un string (1 clave) o una tabla con múltiples claves
+    local keyList = type(keys) == "table" and keys or {keys}
+    
     local btn = Instance.new("TextButton", LeftPanelFrame); btn.Size = UDim2.new(1, -6, 0, 26); btn.BorderSizePixel = 0; btn.Text = "    " .. name
     btn.Font = Enum.Font.GothamMedium; btn.TextSize = 10; btn.TextXAlignment = "Left"; btn.LayoutOrder = order; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     local bStroke = Instance.new("UIStroke", btn); bStroke.Thickness = 1
@@ -638,8 +641,9 @@ local function AddToggle(name, key, order)
     local switchBall = Instance.new("Frame", switchTrack); switchBall.Size = UDim2.new(0, 8, 0, 8); switchBall.Position = UDim2.new(0, 2, 0.5, -4); switchBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Instance.new("UICorner", switchBall).CornerRadius = UDim.new(1, 0)
 
     local function updateVisuals(isInitial)
-        if not isInitial then if Settings[key] then PlayWindToggleOn() else PlayWindToggleOff() end end
-        if Settings[key] then
+        local isEnabled = Settings[keyList[1]]
+        if not isInitial then if isEnabled then PlayWindToggleOn() else PlayWindToggleOff() end end
+        if isEnabled then
             FastTween(btn, {BackgroundColor3 = Color_CardDark}); FastTween(bStroke, {Color = Color_NeonBlue})
             FastTween(switchTrack, {BackgroundColor3 = Color_NeonBlue}); FastTween(switchBall, {Position = UDim2.new(1, -10, 0.5, -4)})
             btn.TextColor3 = Color_TextMain
@@ -649,10 +653,14 @@ local function AddToggle(name, key, order)
             btn.TextColor3 = Color_TextSub
         end
     end
-    btn.MouseEnter:Connect(function() if not Settings[key] then FastTween(btn, {BackgroundColor3 = Color_CardDark}) end end)
-    btn.MouseLeave:Connect(function() if not Settings[key] then FastTween(btn, {BackgroundColor3 = Color_Card}) end end)
+
+    btn.MouseEnter:Connect(function() if not Settings[keyList[1]] then FastTween(btn, {BackgroundColor3 = Color_CardDark}) end end)
+    btn.MouseLeave:Connect(function() if not Settings[keyList[1]] then FastTween(btn, {BackgroundColor3 = Color_Card}) end end)
     btn.MouseButton1Click:Connect(function() 
-        Settings[key] = not Settings[key]; 
+        local newState = not Settings[keyList[1]]
+        for _, k in ipairs(keyList) do
+            Settings[k] = newState
+        end
         updateVisuals(false); 
     end)
 
@@ -677,11 +685,9 @@ end)
 
 AddToggle("Estabilizador NoRecoil", "NoRecoil", 6)
 AddToggle("Name 1 (Tu nombre -> 1)", "NameOne", 7) 
-AddToggle("Visuales ESP Jugadores", "ESP", 8)
-AddToggle("Mostrar Nombres", "NameESP", 9)
-AddToggle("Radar de Armas Portadas", "WeaponESP", 10)
-AddToggle("Barra de Vida Dinámica", "HPBar", 11)
-AddToggle("Circulo FOV Visible", "FOVVisible", 12)
+AddToggle("Visuales ESP Completo", {"ESP", "NameESP", "WeaponESP"}, 8)
+AddToggle("Barra de Vida Dinámica", "HPBar", 9)
+AddToggle("Circulo FOV Visible", "FOVVisible", 10)
 
 -- PANEL DE WHITELIST
 local RightPanel = Instance.new("Frame", ContentFrame)
