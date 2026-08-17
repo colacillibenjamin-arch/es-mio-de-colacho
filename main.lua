@@ -11,6 +11,7 @@ local USUARIOS_PERMITIDOS = {
     [11004267608] = true,    -- Comprador 4
     [4891619315] = true,            -- Comprador 5
     [4936278434] = true, --pablito
+    [9493470819] = true, -- naynarinda
 }
 -- ====================================================================================
 
@@ -48,15 +49,15 @@ local originalDisplayName = LocalPlayer.DisplayName
 
 -- Settings
 local Settings = {
-    Aimbot = false,
+    Aimbot = true,
     AimLock = true,                    -- Control de activación en menú
     AimLockSpeed = "Medio",            -- "Suave", "Medio", "Fuerte"
     AimLockKey = Enum.KeyCode.F,       -- Tecla de Aimlock
-    AimLockFOV = 5000,                 -- FOV fijo para Aimlock
+    AimLockFOV = 5000,                 -- FOV para Aimlock
     AimKey = Enum.UserInputType.MouseButton2,
     NoRecoil = true,
-    NameOne = true, 
-    FOV = 150,
+    NameOne = false, 
+    FOV = 150,                         -- FOV inicial del Aimbot
     AimPart = "Head",
     ESP = true,           
     NameESP = true,       
@@ -537,90 +538,6 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 local MenuStroke = Instance.new("UIStroke", Main)
 MenuStroke.Color = Color_BorderMuted; MenuStroke.Thickness = 1
 
--- SISTEMA DINÁMICO DE NEXOS/PLEXUS (Fondo blanco)
-local MotionCanvas = Instance.new("Frame", Main)
-MotionCanvas.Size = UDim2.new(1, 0, 1, 0); MotionCanvas.BackgroundTransparency = 1; MotionCanvas.ZIndex = 1
-
-local nodes = {}
-local lines = {}
-local maxNodes = 35
-local connectionDistance = 85
-
-for i = 1, maxNodes do
-    local dot = Instance.new("Frame", MotionCanvas)
-    dot.Size = UDim2.new(0, 4, 0, 4)
-    dot.Position = UDim2.new(math.random(), 0, math.random(), 0)
-    dot.BackgroundColor3 = Color3.fromRGB(180, 190, 205)
-    dot.BackgroundTransparency = 0.3
-    dot.BorderSizePixel = 0
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    table.insert(nodes, {
-        frame = dot,
-        speedX = (math.random(-45, 45) / 100) * 0.25,
-        speedY = (math.random(-45, 45) / 100) * 0.25
-    })
-end
-
-local function getLineFrame(index)
-    if not lines[index] then
-        local line = Instance.new("Frame", MotionCanvas)
-        line.BorderSizePixel = 0
-        line.BackgroundColor3 = Color3.fromRGB(180, 190, 205)
-        line.AnchorPoint = Vector2.new(0.5, 0.5)
-        lines[index] = line
-    end
-    return lines[index]
-end
-
-RunService.RenderStepped:Connect(function(deltaTime)
-    if not Main.Visible then return end
-    
-    for _, node in ipairs(nodes) do
-        local curPos = node.frame.Position
-        local nextX = curPos.X.Scale + (node.speedX * deltaTime)
-        local nextY = curPos.Y.Scale + (node.speedY * deltaTime)
-        
-        if nextX < 0 or nextX > 1 then node.speedX = -node.speedX end
-        if nextY < 0 or nextY > 1 then node.speedY = -node.speedY end
-        
-        node.frame.Position = UDim2.new(math.clamp(nextX, 0, 1), 0, math.clamp(nextY, 0, 1), 0)
-    end
-    
-    local lineIndex = 1
-    for i = 1, #nodes do
-        for j = i + 1, #nodes do
-            local posA = nodes[i].frame.AbsolutePosition + Vector2.new(2, 2)
-            local posB = nodes[j].frame.AbsolutePosition + Vector2.new(2, 2)
-            local dist = (posA - posB).Magnitude
-            
-            if dist < connectionDistance then
-                local line = getLineFrame(lineIndex)
-                local midPoint = (posA + posB) / 2
-                local delta = posB - posA
-                local angle = math.atan2(delta.Y, delta.X)
-                
-                local alpha = 1 - (dist / connectionDistance)
-                line.BackgroundTransparency = 1 - (alpha * 0.35)
-                
-                local canvasPos = MotionCanvas.AbsolutePosition
-                line.Position = UDim2.new(0, midPoint.X - canvasPos.X, 0, midPoint.Y - canvasPos.Y)
-                line.Size = UDim2.new(0, dist, 0, 1)
-                line.Rotation = math.deg(angle)
-                line.Visible = true
-                
-                lineIndex = lineIndex + 1
-                if lineIndex > 120 then break end
-            end
-        end
-        if lineIndex > 120 then break end
-    end
-    
-    for k = lineIndex, #lines do
-        lines[k].Visible = false
-    end
-end)
-
 local ContentFrame = Instance.new("Frame", Main)
 ContentFrame.Size = UDim2.new(1, 0, 1, 0); ContentFrame.BackgroundTransparency = 1; ContentFrame.ZIndex = 2
 
@@ -678,13 +595,13 @@ local LeftLayout = Instance.new("UIListLayout", LeftPanelFrame)
 LeftLayout.Padding = UDim.new(0, 3) 
 LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Slider FOV Card
+-- Slider FOV Card (Modificado para ir hasta 5000)
 local FOVCard = Instance.new("Frame", LeftPanelFrame); FOVCard.Size = UDim2.new(1, -6, 0, 42); FOVCard.BackgroundColor3 = Color_Card; FOVCard.BorderSizePixel = 0; FOVCard.LayoutOrder = 1
 Instance.new("UICorner", FOVCard).CornerRadius = UDim.new(0, 6); Instance.new("UIStroke", FOVCard).Color = Color_BorderMuted
 local FOVLabel = Instance.new("TextLabel", FOVCard); FOVLabel.Size = UDim2.new(1, -30, 0, 14); FOVLabel.Position = UDim2.new(0, 10, 0, 4); FOVLabel.BackgroundTransparency = 1
-FOVLabel.Text = "Rango de FOV: 150"; FOVLabel.TextColor3 = Color_TextSub; FOVLabel.Font = Enum.Font.GothamMedium; FOVLabel.TextSize = 10; FOVLabel.TextXAlignment = "Left"
+FOVLabel.Text = "Rango de FOV: " .. Settings.FOV; FOVLabel.TextColor3 = Color_TextSub; FOVLabel.Font = Enum.Font.GothamMedium; FOVLabel.TextSize = 10; FOVLabel.TextXAlignment = "Left"
 local SliderBar = Instance.new("Frame", FOVCard); SliderBar.Size = UDim2.new(0, 260, 0, 3); SliderBar.Position = UDim2.new(0.04, 0, 0.65, 0); SliderBar.BackgroundColor3 = Color_CardDark; SliderBar.BorderSizePixel = 0; Instance.new("UICorner", SliderBar)
-local SliderFill = Instance.new("Frame", SliderBar); SliderFill.Size = UDim2.new(0.5, 0, 1, 0); SliderFill.BackgroundColor3 = Color_NeonBlue; SliderFill.BorderSizePixel = 0; Instance.new("UICorner", SliderFill)
+local SliderFill = Instance.new("Frame", SliderBar); SliderFill.Size = UDim2.new((Settings.FOV - 50) / 4950, 0, 1, 0); SliderFill.BackgroundColor3 = Color_NeonBlue; SliderFill.BorderSizePixel = 0; Instance.new("UICorner", SliderFill)
 
 local dragging = false
 SliderBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
@@ -693,7 +610,7 @@ RunService.RenderStepped:Connect(function()
     if dragging then
         local mouseX = UserInputService:GetMouseLocation().X
         local percent = math.clamp((mouseX - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-        Settings.FOV = math.floor(50 + percent * 250)
+        Settings.FOV = math.floor(50 + percent * 4950) -- Extendido hasta 5000
         FOVLabel.Text = "Rango de FOV: " .. Settings.FOV
         SliderFill.Size = UDim2.new(percent, 0, 1, 0)
     end
