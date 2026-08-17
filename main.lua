@@ -25,22 +25,24 @@ local SoundService = game:GetService("SoundService")
 local Camera = workspace.CurrentCamera
 
 local IsAiming = false
+local IsAimlocking = false
 
--- PALETA DE COLORES MINIMALISTA (NEGRO, BLANCO, GRIS Y AZUL CELESTE)
-local Color_Backdrop = Color3.fromRGB(17, 17, 17)       -- Fondo Negro #111111
-local Color_Card = Color3.fromRGB(24, 24, 24)           -- Tarjetas oscuras para contraste
-local Color_CardDark = Color3.fromRGB(12, 12, 12)       -- Fondo secundario profundo
-local Color_NeonBlue = Color3.fromRGB(0, 168, 255)      -- Azul Celeste #00a8ff (Activo)
-local Color_NeonBlueDim = Color3.fromRGB(0, 55, 85)     -- Azul apagado para transiciones
-local Color_TextMain = Color3.fromRGB(255, 255, 255)    -- Texto principal Blanco Puro
-local Color_TextSub = Color3.fromRGB(160, 160, 160)     -- Texto secundario Gris Claro
-local Color_BorderActive = Color3.fromRGB(200, 200, 200) -- Bordes Blancos Finos para elementos activos
-local Color_BorderMuted = Color3.fromRGB(70, 70, 70)     -- Bordes Grises para elementos desactivados
+-- PALETA DE COLORES CLARA / BLANCA (FONDO BLANCO, AZUL CELESTE Y DETALLES OSCUROS)
+local Color_Backdrop = Color3.fromRGB(255, 255, 255)   -- Fondo Blanco Puro
+local Color_Card = Color3.fromRGB(242, 244, 248)       -- Tarjetas claras
+local Color_CardDark = Color3.fromRGB(225, 230, 238)   -- Fondo secundario/hover
+local Color_NeonBlue = Color3.fromRGB(0, 140, 230)      -- Azul Celeste #008ce6
+local Color_NeonBlueDim = Color3.fromRGB(200, 230, 255) -- Azul suave para selección
+local Color_TextMain = Color3.fromRGB(20, 20, 20)       -- Texto principal Oscuro
+local Color_TextSub = Color3.fromRGB(100, 100, 100)     -- Texto secundario Gris Oscuro
+local Color_BorderActive = Color3.fromRGB(0, 140, 230)  -- Bordes Activos
+local Color_BorderMuted = Color3.fromRGB(210, 215, 225) -- Bordes Claros
 
 -- ESP Colores
 local MainESPColor = Color3.fromRGB(0, 168, 255)       
-local WhiteESP = Color3.fromRGB(255, 255, 255)          -- ESP Blanco
-local DistESPColor = Color3.fromRGB(160, 160, 160)      -- Distancia en Gris (Modificado)
+local NameESPColor = Color3.fromRGB(0, 168, 255)         -- Nombres en Azul Celeste
+local WeaponESPColor = Color3.fromRGB(0, 168, 255)       -- Armas/Equipamiento en Azul Celeste
+local DistESPColor = Color3.fromRGB(120, 120, 120)      -- Distancia en Gris
 
 local originalName = LocalPlayer.Name
 local originalDisplayName = LocalPlayer.DisplayName
@@ -48,6 +50,9 @@ local originalDisplayName = LocalPlayer.DisplayName
 -- Settings
 local Settings = {
     Aimbot = true,
+    AimLock = true,                    -- Control de activación en menú
+    AimLockKey = Enum.KeyCode.F,       -- Tecla de Aimlock
+    AimLockFOV = 5000,                 -- FOV fijo para Aimlock
     AimKey = Enum.UserInputType.MouseButton2,
     NoRecoil = true,
     NameOne = false, 
@@ -55,7 +60,7 @@ local Settings = {
     AimPart = "Head",
     ESP = true,           
     NameESP = true,       
-    DistanceESP =false,   
+    DistanceESP = false,   
     SkeletonESP = false,   
     WeaponESP = true,     
     HPBar = false,
@@ -64,19 +69,24 @@ local Settings = {
     Whitelist = {} 
 }
 
-local function CheckInput(input, state)
-    if input.UserInputType == Settings.AimKey then
-        IsAiming = state
-    end
-end
+-- Configuración de la función de cámara
+getgenv().Resolution = getgenv().Resolution or {[".gg/scripters"] = 1}
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    CheckInput(input, true)
+    if input.UserInputType == Settings.AimKey then
+        IsAiming = true
+    elseif input.KeyCode == Settings.AimLockKey then
+        IsAimlocking = true
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    CheckInput(input, false)
+    if input.UserInputType == Settings.AimKey then
+        IsAiming = false
+    elseif input.KeyCode == Settings.AimLockKey then
+        IsAimlocking = false
+    end
 end)
 
 -- Nombre reactivo
@@ -186,7 +196,7 @@ end
 task.spawn(function()
     local oldIndex
     oldIndex = hookmetamethod(game, "__index", function(self, key)
-        if Settings.NoRecoil and IsAiming and TieneArmaEquipada() and not checkcaller() and type(key) == "string" then
+        if Settings.NoRecoil and (IsAiming or IsAimlocking) and TieneArmaEquipada() and not checkcaller() and type(key) == "string" then
             local k = string.lower(key)
             if k == "recoil" or k == "recoilcontrol" or k == "kickback" or k == "spread" or k:find("recoil") or k:find("spread") then 
                 return 0 
@@ -198,7 +208,7 @@ end)
 
 task.spawn(function()
     while task.wait(0.2) do
-        if Settings.NoRecoil and IsAiming and TieneArmaEquipada() and LocalPlayer.Character then
+        if Settings.NoRecoil and (IsAiming or IsAimlocking) and TieneArmaEquipada() and LocalPlayer.Character then
             local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
             if tool then
                 for _, obj in ipairs(tool:GetDescendants()) do
@@ -363,7 +373,7 @@ local function CreateESPObjects(player)
         Weapons = {}, 
         SkeletonLines = {}
     }
-    obj.Drawings.Name.Size = 13; obj.Drawings.Name.Center = true; obj.Drawings.Name.Outline = true; obj.Drawings.Name.Color = WhiteESP
+    obj.Drawings.Name.Size = 13; obj.Drawings.Name.Center = true; obj.Drawings.Name.Outline = true; obj.Drawings.Name.Color = NameESPColor
     obj.Drawings.DistLabel.Size = 11; obj.Drawings.DistLabel.Center = true; obj.Drawings.DistLabel.Outline = true; obj.Drawings.DistLabel.Color = DistESPColor
     obj.Drawings.Box.Thickness = 1.2; obj.Drawings.Box.Color = MainESPColor
     obj.Drawings.HealthBarBg.Filled = true; obj.Drawings.HealthBarBg.Color = Color3.new(0,0,0)
@@ -422,7 +432,7 @@ RunService.RenderStepped:Connect(function()
         local root = char.HumanoidRootPart
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         local isWhitelisted = Settings.Whitelist[p.Name] == true
-        local colToUse = isWhitelisted and Color3.fromRGB(200,200,200) or MainESPColor
+        local colToUse = isWhitelisted and Color3.fromRGB(150,150,150) or MainESPColor
 
         if onScreen and Settings.SkeletonESP then
             local isR15 = char.Humanoid.RigType == Enum.HumanoidRigType.R15
@@ -493,7 +503,7 @@ RunService.RenderStepped:Connect(function()
                         objs.Weapons[i] = txt
                     end
                     local draw = objs.Weapons[i]
-                    draw.Text = w.Name; draw.Color = WhiteESP 
+                    draw.Text = w.Name; draw.Color = WeaponESPColor 
                     local extraOffset = Settings.DistanceESP and 16 or 4
                     draw.Position = Vector2.new(screenPos.X, y + h + extraOffset + ((i - 1) * 10))
                     draw.Visible = true
@@ -506,7 +516,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Motor Aimbot
+-- Motor Aimbot y Aimlock
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1; FOVCircle.Color = Color_NeonBlue; FOVCircle.Radius = Settings.FOV
 
@@ -521,9 +531,35 @@ end
 
 RunService.RenderStepped:Connect(function()
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    FOVCircle.Visible = Settings.FOVVisible and Settings.Aimbot
-    FOVCircle.Radius = Settings.FOV
+    FOVCircle.Visible = Settings.FOVVisible and (Settings.Aimbot or Settings.AimLock)
+    FOVCircle.Radius = (Settings.AimLock and IsAimlocking) and Settings.AimLockFOV or Settings.FOV
 
+    -- Proceso de Aimlock (Activo al mantener pulsada la tecla F)
+    if Settings.AimLock and IsAimlocking then
+        local bestTarget = nil
+        local maxD = Settings.AimLockFOV
+
+        for _, p in pairs(Players:GetPlayers()) do
+            if p == LocalPlayer or Settings.Whitelist[p.Name] == true then continue end
+            
+            local char = p.Character
+            if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then continue end
+            
+            -- Fijado estricto a Cabeza para el Aimlock
+            local head = char:FindFirstChild("Head")
+            if not head then continue end
+            
+            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - FOVCircle.Position).Magnitude
+                if dist < maxD then maxD = dist; bestTarget = head.Position end
+            end
+        end
+        if bestTarget then Camera.CFrame = CFrame.new(Camera.CFrame.Position, bestTarget) end
+        return
+    end
+
+    -- Proceso de Aimbot estándar
     if not Settings.Aimbot or not IsAiming or not TieneArmaEquipada() then return end
     
     local bestTarget = nil
@@ -547,7 +583,16 @@ RunService.RenderStepped:Connect(function()
     if bestTarget then Camera.CFrame = CFrame.new(Camera.CFrame.Position, bestTarget) end
 end)
 
--- INTERFAZ PRINCIPAL MINIMALISTA (colacho)
+-- INTEGRACIÓN DE TU FUNCIÓN DE CÁMARA CON EL RUNSERVICE
+if getgenv().gg_scripters == nil then
+    RunService.RenderStepped:Connect(function()
+        if getgenv().Resolution and getgenv().Resolution[".gg/scripters"] then
+            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[".gg/scripters"], 0, 0, 0, 1)
+        end
+    end)
+end
+
+-- INTERFAZ PRINCIPAL MINIMALISTA (colachox)
 local ScreenGui = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("CoreGui"))
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 640, 0, 480) 
@@ -558,37 +603,36 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 local MenuStroke = Instance.new("UIStroke", Main)
 MenuStroke.Color = Color_BorderMuted; MenuStroke.Thickness = 1
 
--- SISTEMA DINÁMICO DE NEXOS/PLEXUS (35 Nodos, velocidad duplicada + líneas de conexión blancas)
+-- SISTEMA DINÁMICO DE NEXOS/PLEXUS (Adaptado para fondo blanco)
 local MotionCanvas = Instance.new("Frame", Main)
 MotionCanvas.Size = UDim2.new(1, 0, 1, 0); MotionCanvas.BackgroundTransparency = 1; MotionCanvas.ZIndex = 1
 
 local nodes = {}
 local lines = {}
 local maxNodes = 35
-local connectionDistance = 85 -- Distancia máxima en píxeles para dibujar líneas entre nudos
+local connectionDistance = 85
 
 for i = 1, maxNodes do
     local dot = Instance.new("Frame", MotionCanvas)
-    dot.Size = UDim2.new(0, 4, 0, 4) -- Partículas un poco más notorias
+    dot.Size = UDim2.new(0, 4, 0, 4)
     dot.Position = UDim2.new(math.random(), 0, math.random(), 0)
-    dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    dot.BackgroundColor3 = Color3.fromRGB(180, 190, 205)
     dot.BackgroundTransparency = 0.3
     dot.BorderSizePixel = 0
     Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
     
     table.insert(nodes, {
         frame = dot,
-        speedX = (math.random(-45, 45) / 100) * 0.25, -- Velocidad duplicada y más agresiva
+        speedX = (math.random(-45, 45) / 100) * 0.25,
         speedY = (math.random(-45, 45) / 100) * 0.25
     })
 end
 
--- Limpiador e instanciador de líneas de nexos (Frame UI optimizados)
 local function getLineFrame(index)
     if not lines[index] then
         local line = Instance.new("Frame", MotionCanvas)
         line.BorderSizePixel = 0
-        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        line.BackgroundColor3 = Color3.fromRGB(180, 190, 205)
         line.AnchorPoint = Vector2.new(0.5, 0.5)
         lines[index] = line
     end
@@ -598,7 +642,6 @@ end
 RunService.RenderStepped:Connect(function(deltaTime)
     if not Main.Visible then return end
     
-    -- Actualizar posiciones físicas de los nodos
     for _, node in ipairs(nodes) do
         local curPos = node.frame.Position
         local nextX = curPos.X.Scale + (node.speedX * deltaTime)
@@ -610,7 +653,6 @@ RunService.RenderStepped:Connect(function(deltaTime)
         node.frame.Position = UDim2.new(math.clamp(nextX, 0, 1), 0, math.clamp(nextY, 0, 1), 0)
     end
     
-    -- Dibujar interconexiones (Plexus)
     local lineIndex = 1
     for i = 1, #nodes do
         for j = i + 1, #nodes do
@@ -624,11 +666,9 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 local delta = posB - posA
                 local angle = math.atan2(delta.Y, delta.X)
                 
-                -- Se adapta la transparencia según la proximidad (más cerca = más visible)
                 local alpha = 1 - (dist / connectionDistance)
-                line.BackgroundTransparency = 1 - (alpha * 0.25) -- Líneas blancas suaves y dinámicas
+                line.BackgroundTransparency = 1 - (alpha * 0.35)
                 
-                -- Posicionar dentro de la GUI relativa al canvas
                 local canvasPos = MotionCanvas.AbsolutePosition
                 line.Position = UDim2.new(0, midPoint.X - canvasPos.X, 0, midPoint.Y - canvasPos.Y)
                 line.Size = UDim2.new(0, dist, 0, 1)
@@ -636,13 +676,12 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 line.Visible = true
                 
                 lineIndex = lineIndex + 1
-                if lineIndex > 120 then break end -- Límite de conexiones para evitar sobrecarga de UI
+                if lineIndex > 120 then break end
             end
         end
         if lineIndex > 120 then break end
     end
     
-    -- Ocultar líneas excedentes que no están activas en este frame
     for k = lineIndex, #lines do
         lines[k].Visible = false
     end
@@ -653,10 +692,47 @@ ContentFrame.Size = UDim2.new(1, 0, 1, 0); ContentFrame.BackgroundTransparency =
 
 local HeaderFrame = Instance.new("Frame", ContentFrame); HeaderFrame.Size = UDim2.new(1, 0, 0, 50); HeaderFrame.BackgroundTransparency = 1
 local Title = Instance.new("TextLabel", HeaderFrame); Title.Size = UDim2.new(1, -40, 1, 0); Title.Position = UDim2.new(0, 20, 0, 0); Title.BackgroundTransparency = 1
-Title.Text = "VELOCITY"; Title.TextColor3 = Color_TextMain; Title.Font = Enum.Font.GothamMedium; Title.TextSize = 15; Title.TextXAlignment = "Left"
+Title.Text = "COLACHOX"; Title.TextColor3 = Color_TextMain; Title.Font = Enum.Font.GothamMedium; Title.TextSize = 15; Title.TextXAlignment = "Left"
 
-local Subtitle = Instance.new("TextLabel", HeaderFrame); Subtitle.Size = UDim2.new(1, -40, 0, 20); Subtitle.Position = UDim2.new(0, 95, 0.5, -9); Subtitle.BackgroundTransparency = 1
+local Subtitle = Instance.new("TextLabel", HeaderFrame); Subtitle.Size = UDim2.new(1, -40, 0, 20); Subtitle.Position = UDim2.new(0, 105, 0.5, -9); Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "• minimal edition"; Subtitle.TextColor3 = Color_TextSub; Subtitle.Font = Enum.Font.Gotham; Subtitle.TextSize = 10; Subtitle.TextXAlignment = "Left"
+
+-- ==================== BOTÓN DE CÁMARA (INTEGRADO EN EL PANEL SUPERIOR) ====================
+local CameraButton = Instance.new("TextButton", HeaderFrame)
+CameraButton.Name = "CameraButton"
+CameraButton.Size = UDim2.new(0, 32, 0, 32)
+CameraButton.Position = UDim2.new(1, -45, 0.5, -16)
+CameraButton.BackgroundColor3 = Color_Card
+CameraButton.Text = "📷"
+CameraButton.TextSize = 16
+CameraButton.TextColor3 = Color_TextMain
+CameraButton.BorderSizePixel = 0
+
+local CamCorner = Instance.new("UICorner", CameraButton)
+CamCorner.CornerRadius = UDim.new(0, 6)
+
+local CamStroke = Instance.new("UIStroke", CameraButton)
+CamStroke.Color = Color_BorderMuted
+CamStroke.Thickness = 1
+
+local cameraActive = false
+CameraButton.MouseButton1Click:Connect(function()
+    cameraActive = not cameraActive
+    if cameraActive then
+        PlayWindToggleOn()
+        FastTween(CameraButton, {BackgroundColor3 = Color_NeonBlueDim})
+        FastTween(CamStroke, {Color = Color_NeonBlue})
+        getgenv().Resolution[".gg/scripters"] = 0.6
+        Notify("Cámara Activada", Color_NeonBlue)
+    else
+        PlayWindToggleOff()
+        FastTween(CameraButton, {BackgroundColor3 = Color_Card})
+        FastTween(CamStroke, {Color = Color_BorderMuted})
+        getgenv().Resolution[".gg/scripters"] = 1
+        Notify("Cámara Desactivada", Color_BorderMuted)
+    end
+end)
+-- ====================================================================================
 
 -- PANEL IZQUIERDO COMPACTO
 local LeftPanelFrame = Instance.new("Frame", ContentFrame)
@@ -708,7 +784,7 @@ local function AddToggle(name, key, order)
     btn.Font = Enum.Font.GothamMedium; btn.TextSize = 10; btn.TextXAlignment = "Left"; btn.LayoutOrder = order; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     local bStroke = Instance.new("UIStroke", btn); bStroke.Thickness = 1
     local switchTrack = Instance.new("Frame", btn); switchTrack.Size = UDim2.new(0, 26, 0, 12); switchTrack.Position = UDim2.new(1, -36, 0.5, -6); switchTrack.BorderSizePixel = 0; Instance.new("UICorner", switchTrack).CornerRadius = UDim.new(1, 0)
-    local switchBall = Instance.new("Frame", switchTrack); switchBall.Size = UDim2.new(0, 8, 0, 8); switchBall.Position = UDim2.new(0, 2, 0.5, -4); switchBall.BackgroundColor3 = Color_TextMain; Instance.new("UICorner", switchBall).CornerRadius = UDim.new(1, 0)
+    local switchBall = Instance.new("Frame", switchTrack); switchBall.Size = UDim2.new(0, 8, 0, 8); switchBall.Position = UDim2.new(0, 2, 0.5, -4); switchBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Instance.new("UICorner", switchBall).CornerRadius = UDim.new(1, 0)
 
     local function updateVisuals(isInitial)
         if not isInitial then if Settings[key] then PlayWindToggleOn() else PlayWindToggleOff() end end
@@ -717,7 +793,6 @@ local function AddToggle(name, key, order)
             FastTween(switchTrack, {BackgroundColor3 = Color_NeonBlue}); FastTween(switchBall, {Position = UDim2.new(1, -10, 0.5, -4)})
             btn.TextColor3 = Color_TextMain
         else
-            -- Estilo desactivado: Bordes y textos cambian a gris
             FastTween(btn, {BackgroundColor3 = Color_Card}); FastTween(bStroke, {Color = Color_BorderMuted})
             FastTween(switchTrack, {BackgroundColor3 = Color_CardDark}); FastTween(switchBall, {Position = UDim2.new(0, 2, 0.5, -4)})
             btn.TextColor3 = Color_TextSub
@@ -734,15 +809,16 @@ local function AddToggle(name, key, order)
 end
 
 AddToggle("Aimbot Assist", "Aimbot", 3)
-AddToggle("Estabilizador NoRecoil", "NoRecoil", 4)
-AddToggle("Name 1 (Tu nombre -> 1)", "NameOne", 5) 
-AddToggle("Visuales ESP Jugadores", "ESP", 6)
-AddToggle("Mostrar Nombres", "NameESP", 7)
-AddToggle("Mostrar Distancia", "DistanceESP", 8)
-AddToggle("Esqueleto (Skeleton ESP)", "SkeletonESP", 9) 
-AddToggle("Radar de Armas Portadas", "WeaponESP", 10)
-AddToggle("Barra de Vida Dinámica", "HPBar", 11)
-AddToggle("Circulo FOV Visible", "FOVVisible", 12)
+AddToggle("Aimlock Directo [Tecla F]", "AimLock", 4)
+AddToggle("Estabilizador NoRecoil", "NoRecoil", 5)
+AddToggle("Name 1 (Tu nombre -> 1)", "NameOne", 6) 
+AddToggle("Visuales ESP Jugadores", "ESP", 7)
+AddToggle("Mostrar Nombres", "NameESP", 8)
+AddToggle("Mostrar Distancia", "DistanceESP", 9)
+AddToggle("Esqueleto (Skeleton ESP)", "SkeletonESP", 10) 
+AddToggle("Radar de Armas Portadas", "WeaponESP", 11)
+AddToggle("Barra de Vida Dinámica", "HPBar", 12)
+AddToggle("Circulo FOV Visible", "FOVVisible", 13)
 
 -- PANEL DE WHITELIST
 local RightPanel = Instance.new("Frame", ContentFrame)
@@ -774,7 +850,6 @@ local function ActualizarPanelWhitelist()
             if Settings.Whitelist[p.Name] then
                 pBtn.BackgroundColor3 = Color_NeonBlueDim; pBtn.TextColor3 = Color_TextMain; pStroke.Color = Color_NeonBlue
             else
-                -- Los nombres inactivos/normales en la whitelist ahora usan Color_TextSub (Gris) en lugar de negro
                 pBtn.BackgroundColor3 = Color_CardDark; pBtn.TextColor3 = Color_TextSub; pStroke.Color = Color_BorderMuted
             end
         end
