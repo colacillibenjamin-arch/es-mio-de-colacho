@@ -42,7 +42,6 @@ local Color_BorderMuted = Color3.fromRGB(210, 215, 225) -- Bordes Claros
 local MainESPColor = Color3.fromRGB(0, 168, 255)       
 local NameESPColor = Color3.fromRGB(0, 168, 255)         -- Nombres en Azul Celeste
 local WeaponESPColor = Color3.fromRGB(0, 168, 255)       -- Armas/Equipamiento en Azul Celeste
-local DistESPColor = Color3.fromRGB(120, 120, 120)      -- Distancia en Gris
 
 local originalName = LocalPlayer.Name
 local originalDisplayName = LocalPlayer.DisplayName
@@ -51,6 +50,7 @@ local originalDisplayName = LocalPlayer.DisplayName
 local Settings = {
     Aimbot = true,
     AimLock = true,                    -- Control de activación en menú
+    AimLockSpeed = "Medio",            -- "Suave", "Medio", "Fuerte"
     AimLockKey = Enum.KeyCode.F,       -- Tecla de Aimlock
     AimLockFOV = 5000,                 -- FOV fijo para Aimlock
     AimKey = Enum.UserInputType.MouseButton2,
@@ -60,8 +60,6 @@ local Settings = {
     AimPart = "Head",
     ESP = true,           
     NameESP = true,       
-    DistanceESP = false,   
-    SkeletonESP = false,   
     WeaponESP = true,     
     HPBar = false,
     FOVVisible = true,
@@ -318,31 +316,6 @@ end
 
 -- RENDER ESP
 local ESPObjects = {}
-local SkeletonConnections = {
-    R15 = {
-        {"Head", "UpperTorso"},
-        {"UpperTorso", "LowerTorso"},
-        {"UpperTorso", "LeftUpperArm"},
-        {"LeftUpperArm", "LeftLowerArm"},
-        {"LeftLowerArm", "LeftHand"},
-        {"UpperTorso", "RightUpperArm"},
-        {"RightUpperArm", "RightLowerArm"},
-        {"RightLowerArm", "RightHand"},
-        {"LowerTorso", "LeftUpperLeg"},
-        {"LeftUpperLeg", "LeftLowerLeg"},
-        {"LeftLowerLeg", "LeftFoot"},
-        {"LowerTorso", "RightUpperLeg"},
-        {"RightUpperLeg", "RightLowerLeg"},
-        {"RightLowerLeg", "RightFoot"}
-    },
-    R6 = {
-        {"Head", "Torso"},
-        {"Torso", "Left Arm"},
-        {"Torso", "Right Arm"},
-        {"Torso", "Left Leg"},
-        {"Torso", "Right Leg"}
-    }
-}
 
 local function RemoveESP(player)
     if ESPObjects[player] then
@@ -354,10 +327,6 @@ local function RemoveESP(player)
             weaponDraw.Visible = false
             weaponDraw:Destroy() 
         end
-        for _, line in ipairs(ESPObjects[player].SkeletonLines) do
-            line.Visible = false
-            line:Destroy()
-        end
         ESPObjects[player] = nil
     end
 end
@@ -367,26 +336,16 @@ local function CreateESPObjects(player)
     
     local obj = {
         Drawings = {
-            Name = Drawing.new("Text"), DistLabel = Drawing.new("Text"), Box = Drawing.new("Square"),           
+            Name = Drawing.new("Text"), Box = Drawing.new("Square"),           
             HealthBarBg = Drawing.new("Square"), HealthBar = Drawing.new("Square"), HealthText = Drawing.new("Text")       
         }, 
-        Weapons = {}, 
-        SkeletonLines = {}
+        Weapons = {}
     }
     obj.Drawings.Name.Size = 13; obj.Drawings.Name.Center = true; obj.Drawings.Name.Outline = true; obj.Drawings.Name.Color = NameESPColor
-    obj.Drawings.DistLabel.Size = 11; obj.Drawings.DistLabel.Center = true; obj.Drawings.DistLabel.Outline = true; obj.Drawings.DistLabel.Color = DistESPColor
     obj.Drawings.Box.Thickness = 1.2; obj.Drawings.Box.Color = MainESPColor
     obj.Drawings.HealthBarBg.Filled = true; obj.Drawings.HealthBarBg.Color = Color3.new(0,0,0)
     obj.Drawings.HealthBar.Filled = true
     obj.Drawings.HealthText.Size = 11; obj.Drawings.HealthText.Center = false; obj.Drawings.HealthText.Outline = true
-    
-    for i = 1, 15 do
-        local line = Drawing.new("Line")
-        line.Thickness = 1.2
-        line.Color = MainESPColor
-        line.Visible = false
-        table.insert(obj.SkeletonLines, line)
-    end
 
     ESPObjects[player] = obj
     return obj
@@ -404,7 +363,6 @@ local function VincularJugador(p)
         if objs then
             for _, draw in pairs(objs.Drawings) do draw.Visible = false end
             for _, wd in pairs(objs.Weapons) do wd.Visible = false end
-            for _, line in ipairs(objs.SkeletonLines) do line.Visible = false end
         end
     end)
 end
@@ -420,12 +378,11 @@ RunService.RenderStepped:Connect(function()
         if not objs then objs = CreateESPObjects(p) end
         
         local char = p.Character
-        local canRenderAny = (Settings.ESP or Settings.NameESP or Settings.DistanceESP or Settings.WeaponESP or Settings.SkeletonESP)
+        local canRenderAny = (Settings.ESP or Settings.NameESP or Settings.WeaponESP)
         
         if not canRenderAny or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 or not char:FindFirstChild("HumanoidRootPart") then
             for _, draw in pairs(objs.Drawings) do draw.Visible = false end
             for _, wd in pairs(objs.Weapons) do wd.Visible = false end
-            for _, line in ipairs(objs.SkeletonLines) do line.Visible = false end
             continue
         end
 
@@ -433,38 +390,6 @@ RunService.RenderStepped:Connect(function()
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         local isWhitelisted = Settings.Whitelist[p.Name] == true
         local colToUse = isWhitelisted and Color3.fromRGB(150,150,150) or MainESPColor
-
-        if onScreen and Settings.SkeletonESP then
-            local isR15 = char.Humanoid.RigType == Enum.HumanoidRigType.R15
-            local connections = isR15 and SkeletonConnections.R15 or SkeletonConnections.R6
-            local lineIndex = 1
-
-            for _, pair in ipairs(connections) do
-                local partA = char:FindFirstChild(pair[1])
-                local partB = char:FindFirstChild(pair[2])
-
-                if partA and partB then
-                    local posA, onScreenA = Camera:WorldToViewportPoint(partA.Position)
-                    local posB, onScreenB = Camera:WorldToViewportPoint(partB.Position)
-
-                    if onScreenA and onScreenB then
-                        local line = objs.SkeletonLines[lineIndex]
-                        if line then
-                            line.From = Vector2.new(posA.X, posA.Y)
-                            line.To = Vector2.new(posB.X, posB.Y)
-                            line.Color = colToUse
-                            line.Visible = true
-                            lineIndex = lineIndex + 1
-                        end
-                    end
-                end
-            end
-            for i = lineIndex, #objs.SkeletonLines do
-                objs.SkeletonLines[i].Visible = false
-            end
-        else
-            for _, line in ipairs(objs.SkeletonLines) do line.Visible = false end
-        end
 
         if onScreen then
             local h = (Camera.ViewportSize.Y / screenPos.Z) * 2.6
@@ -478,9 +403,6 @@ RunService.RenderStepped:Connect(function()
 
             if Settings.NameESP then objs.Drawings.Name.Visible = true; objs.Drawings.Name.Text = p.DisplayName; objs.Drawings.Name.Position = Vector2.new(screenPos.X, y - 18)
             else objs.Drawings.Name.Visible = false end
-
-            if Settings.DistanceESP then objs.Drawings.DistLabel.Visible = true; objs.Drawings.DistLabel.Text = math.floor(screenPos.Z) .. "m"; objs.Drawings.DistLabel.Position = Vector2.new(screenPos.X, y + h + 4)
-            else objs.Drawings.DistLabel.Visible = false end
 
             if Settings.HPBar then
                 local rawHp = math.floor(char.Humanoid.Health)
@@ -504,8 +426,7 @@ RunService.RenderStepped:Connect(function()
                     end
                     local draw = objs.Weapons[i]
                     draw.Text = w.Name; draw.Color = WeaponESPColor 
-                    local extraOffset = Settings.DistanceESP and 16 or 4
-                    draw.Position = Vector2.new(screenPos.X, y + h + extraOffset + ((i - 1) * 10))
+                    draw.Position = Vector2.new(screenPos.X, y + h + 4 + ((i - 1) * 10))
                     draw.Visible = true
                 end
             end
@@ -555,7 +476,20 @@ RunService.RenderStepped:Connect(function()
                 if dist < maxD then maxD = dist; bestTarget = head.Position end
             end
         end
-        if bestTarget then Camera.CFrame = CFrame.new(Camera.CFrame.Position, bestTarget) end
+
+        if bestTarget then
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, bestTarget)
+            
+            -- Determinar la velocidad del lerp (smoothness)
+            local lerpFactor = 0.25 -- Por defecto "Medio"
+            if Settings.AimLockSpeed == "Suave" then
+                lerpFactor = 0.05
+            elseif Settings.AimLockSpeed == "Fuerte" then
+                lerpFactor = 1.0 -- Directo / Instantáneo
+            end
+            
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, lerpFactor)
+        end
         return
     end
 
@@ -603,7 +537,7 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 local MenuStroke = Instance.new("UIStroke", Main)
 MenuStroke.Color = Color_BorderMuted; MenuStroke.Thickness = 1
 
--- SISTEMA DINÁMICO DE NEXOS/PLEXUS (Adaptado para fondo blanco)
+-- SISTEMA DINÁMICO DE NEXOS/PLEXUS (Fondo blanco)
 local MotionCanvas = Instance.new("Frame", Main)
 MotionCanvas.Size = UDim2.new(1, 0, 1, 0); MotionCanvas.BackgroundTransparency = 1; MotionCanvas.ZIndex = 1
 
@@ -697,7 +631,7 @@ Title.Text = "COLACHOX"; Title.TextColor3 = Color_TextMain; Title.Font = Enum.Fo
 local Subtitle = Instance.new("TextLabel", HeaderFrame); Subtitle.Size = UDim2.new(1, -40, 0, 20); Subtitle.Position = UDim2.new(0, 105, 0.5, -9); Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "• minimal edition"; Subtitle.TextColor3 = Color_TextSub; Subtitle.Font = Enum.Font.Gotham; Subtitle.TextSize = 10; Subtitle.TextXAlignment = "Left"
 
--- ==================== BOTÓN DE CÁMARA (INTEGRADO EN EL PANEL SUPERIOR) ====================
+-- ==================== BOTÓN DE CÁMARA ====================
 local CameraButton = Instance.new("TextButton", HeaderFrame)
 CameraButton.Name = "CameraButton"
 CameraButton.Size = UDim2.new(0, 32, 0, 32)
@@ -810,15 +744,27 @@ end
 
 AddToggle("Aimbot Assist", "Aimbot", 3)
 AddToggle("Aimlock Directo [Tecla F]", "AimLock", 4)
-AddToggle("Estabilizador NoRecoil", "NoRecoil", 5)
-AddToggle("Name 1 (Tu nombre -> 1)", "NameOne", 6) 
-AddToggle("Visuales ESP Jugadores", "ESP", 7)
-AddToggle("Mostrar Nombres", "NameESP", 8)
-AddToggle("Mostrar Distancia", "DistanceESP", 9)
-AddToggle("Esqueleto (Skeleton ESP)", "SkeletonESP", 10) 
-AddToggle("Radar de Armas Portadas", "WeaponESP", 11)
-AddToggle("Barra de Vida Dinámica", "HPBar", 12)
-AddToggle("Circulo FOV Visible", "FOVVisible", 13)
+
+-- Selector de Fuerza de Aimlock
+local AimSpeedBtn = Instance.new("TextButton", LeftPanelFrame); AimSpeedBtn.Size = UDim2.new(1, -6, 0, 26); AimSpeedBtn.BackgroundColor3 = Color_Card; AimSpeedBtn.BorderSizePixel = 0
+AimSpeedBtn.Text = "   Fuerza Aimlock: " .. Settings.AimLockSpeed; AimSpeedBtn.TextColor3 = Color_TextSub; AimSpeedBtn.Font = Enum.Font.GothamMedium; AimSpeedBtn.TextSize = 10; AimSpeedBtn.TextXAlignment = "Left"; AimSpeedBtn.LayoutOrder = 5
+Instance.new("UICorner", AimSpeedBtn).CornerRadius = UDim.new(0, 6); local AimSpeedStroke = Instance.new("UIStroke", AimSpeedBtn); AimSpeedStroke.Color = Color_BorderMuted
+
+local speedOptions = {"Suave", "Medio", "Fuerte"}
+AimSpeedBtn.MouseButton1Click:Connect(function()
+    PlayWindToggleOn()
+    local idx = table.find(speedOptions, Settings.AimLockSpeed) or 2
+    idx = (idx % #speedOptions) + 1; Settings.AimLockSpeed = speedOptions[idx]
+    AimSpeedBtn.Text = "   Fuerza Aimlock: " .. Settings.AimLockSpeed
+end)
+
+AddToggle("Estabilizador NoRecoil", "NoRecoil", 6)
+AddToggle("Name 1 (Tu nombre -> 1)", "NameOne", 7) 
+AddToggle("Visuales ESP Jugadores", "ESP", 8)
+AddToggle("Mostrar Nombres", "NameESP", 9)
+AddToggle("Radar de Armas Portadas", "WeaponESP", 10)
+AddToggle("Barra de Vida Dinámica", "HPBar", 11)
+AddToggle("Circulo FOV Visible", "FOVVisible", 12)
 
 -- PANEL DE WHITELIST
 local RightPanel = Instance.new("Frame", ContentFrame)
